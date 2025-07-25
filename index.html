@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh">
 <head>
@@ -127,11 +126,13 @@
 
       const now = Date.now();
 
+      // 每隔一段时间生成新块
       if (now - lastSpawn > spawnRate) {
         createTile();
         lastSpawn = now;
       }
 
+      // 每10秒提速
       if (now - lastSpeedUp > 10000) {
         speed += 1;
         spawnRate = Math.max(200, spawnRate - 100);
