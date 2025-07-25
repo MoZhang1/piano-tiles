@@ -1,38 +1,105 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>钢琴块小游戏</title>
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
       overflow: hidden;
       font-family: sans-serif;
-    }
-    canvas {
-      display: block;
       background: #fff;
+      touch-action: manipulation;
+    }
+    #gameCanvas {
+      display: none;
+    }
+    #startScreen, #endScreen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      background: white;
+      z-index: 10;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 20px;
+      border: none;
+      background: #000;
+      color: #fff;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #scoreResult {
+      font-size: 24px;
+      margin-bottom: 20px;
     }
   </style>
 </head>
 <body>
+  <div id="startScreen">
+    <h1>钢琴块</h1>
+    <button onclick="startGame()">开始游戏</button>
+  </div>
+
   <canvas id="gameCanvas"></canvas>
+
+  <div id="endScreen" style="display:none;">
+    <div id="scoreResult">得分：0</div>
+    <button onclick="restartGame()">再来一次</button>
+  </div>
 
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const startScreen = document.getElementById("startScreen");
+    const endScreen = document.getElementById("endScreen");
+    const scoreResult = document.getElementById("scoreResult");
 
-    const tileWidth = canvas.width / 4;
-    const tileHeight = 150;
-    const speed = 5;
+    let tileWidth, tileHeight;
+    let tiles = [];
     let score = 0;
     let gameOver = false;
+    let speed = 3;
+    let interval;
+    let spawnRate = 1000;
 
-    const tiles = [];
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      tileWidth = canvas.width / 4;
+      tileHeight = canvas.height / 6;
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    function startGame() {
+      startScreen.style.display = "none";
+      canvas.style.display = "block";
+      score = 0;
+      gameOver = false;
+      tiles = [];
+      speed = 3;
+      spawnRate = 1000;
+      lastSpawn = Date.now();
+      lastSpeedUp = Date.now();
+      gameLoop();
+    }
+
+    function restartGame() {
+      endScreen.style.display = "none";
+      startGame();
+    }
 
     function createTile() {
       const col = Math.floor(Math.random() * 4);
@@ -47,30 +114,40 @@
     function drawScore() {
       ctx.fillStyle = "black";
       ctx.font = "24px Arial";
-      ctx.fillText(`得分：${score}`, 20, 30);
+      ctx.fillText(`得分：${score}`, 10, 30);
     }
+
+    let lastSpawn = Date.now();
+    let lastSpeedUp = Date.now();
 
     function gameLoop() {
       if (gameOver) return;
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      tiles.forEach(tile => {
-        tile.y += speed;
-        drawTile(tile);
-      });
+      const now = Date.now();
 
-      if (tiles.length === 0 || tiles[tiles.length - 1].y > tileHeight) {
+      if (now - lastSpawn > spawnRate) {
         createTile();
+        lastSpawn = now;
       }
 
-      for (const tile of tiles) {
-        if (tile.y + tileHeight > canvas.height) {
-          gameOver = true;
-          alert("游戏结束！得分：" + score);
-          return;
-        }
+      if (now - lastSpeedUp > 10000) {
+        speed += 1;
+        spawnRate = Math.max(200, spawnRate - 100);
+        lastSpeedUp = now;
       }
+
+      tiles.forEach(tile => tile.y += speed);
+      tiles.forEach(drawTile);
+
+      tiles = tiles.filter(tile => {
+        if (tile.y > canvas.height) {
+          endGame();
+          return false;
+        }
+        return true;
+      });
 
       drawScore();
       requestAnimationFrame(gameLoop);
@@ -96,7 +173,12 @@
       }
     });
 
-    gameLoop();
+    function endGame() {
+      gameOver = true;
+      canvas.style.display = "none";
+      scoreResult.textContent = `得分：${score}`;
+      endScreen.style.display = "flex";
+    }
   </script>
 </body>
 </html>
