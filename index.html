@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>钢琴块小游戏</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const tileWidth = canvas.width / 4;
+    const tileHeight = 150;
+    const speed = 5;
+    let score = 0;
+    let gameOver = false;
+
+    const tiles = [];
+
+    function createTile() {
+      const col = Math.floor(Math.random() * 4);
+      tiles.push({ x: col * tileWidth, y: -tileHeight });
+    }
+
+    function drawTile(tile) {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(tile.x, tile.y, tileWidth, tileHeight);
+    }
+
+    function drawScore() {
+      ctx.fillStyle = "black";
+      ctx.font = "24px Arial";
+      ctx.fillText(`得分：${score}`, 20, 30);
+    }
+
+    function gameLoop() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      tiles.forEach(tile => {
+        tile.y += speed;
+        drawTile(tile);
+      });
+
+      if (tiles.length === 0 || tiles[tiles.length - 1].y > tileHeight) {
+        createTile();
+      }
+
+      for (const tile of tiles) {
+        if (tile.y + tileHeight > canvas.height) {
+          gameOver = true;
+          alert("游戏结束！得分：" + score);
+          return;
+        }
+      }
+
+      drawScore();
+      requestAnimationFrame(gameLoop);
+    }
+
+    canvas.addEventListener("click", function (e) {
+      if (gameOver) return;
+      const clickX = e.clientX;
+      const clickY = e.clientY;
+
+      for (let i = 0; i < tiles.length; i++) {
+        const tile = tiles[i];
+        if (
+          clickX >= tile.x &&
+          clickX <= tile.x + tileWidth &&
+          clickY >= tile.y &&
+          clickY <= tile.y + tileHeight
+        ) {
+          tiles.splice(i, 1);
+          score++;
+          return;
+        }
+      }
+    });
+
+    gameLoop();
+  </script>
+</body>
+</html>
