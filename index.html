@@ -1,0 +1,179 @@
+
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>钢琴块小游戏</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      font-family: sans-serif;
+      background: #fff;
+      touch-action: manipulation;
+    }
+    #gameCanvas { display: none; }
+    #startScreen, #endScreen {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: flex; justify-content: center; align-items: center;
+      flex-direction: column;
+      background: white;
+      z-index: 10;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 20px;
+      border: none;
+      background: #000;
+      color: #fff;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #scoreResult, #rankList {
+      font-size: 20px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="startScreen">
+    <h1>钢琴块</h1>
+    <button onclick="startGame()">开始游戏</button>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="endScreen" style="display:none;">
+    <div id="scoreResult">得分：0</div>
+    <div id="rankList">排行榜加载中...</div>
+    <button onclick="restartGame()">再来一次</button>
+  </div>
+
+  <audio id="bgm" src="bgm.mp3" loop></audio>
+  <audio id="clickSound" src="click.mp3"></audio>
+  <audio id="failSound" src="fail.mp3"></audio>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const startScreen = document.getElementById("startScreen");
+    const endScreen = document.getElementById("endScreen");
+    const scoreResult = document.getElementById("scoreResult");
+    const rankListDiv = document.getElementById("rankList");
+
+    const clickSound = document.getElementById("clickSound");
+    const failSound = document.getElementById("failSound");
+    const bgm = document.getElementById("bgm");
+
+    let tileWidth, tileHeight;
+    let tiles = [], score = 0, gameOver = false;
+    let speed = 3, spawnRate = 1000;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      tileWidth = canvas.width / 4;
+      tileHeight = canvas.height / 6;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    function startGame() {
+      startScreen.style.display = "none";
+      canvas.style.display = "block";
+      bgm.play().catch(() => {});
+      score = 0; gameOver = false; tiles = [];
+      speed = 3; spawnRate = 1000;
+      lastSpawn = Date.now(); lastSpeedUp = Date.now();
+      gameLoop();
+    }
+
+    function restartGame() {
+      endScreen.style.display = "none";
+      startGame();
+    }
+
+    function createTile() {
+      const col = Math.floor(Math.random() * 4);
+      tiles.push({ x: col * tileWidth, y: -tileHeight });
+    }
+
+    function drawTile(tile) {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(tile.x, tile.y, tileWidth, tileHeight);
+    }
+
+    function drawScore() {
+      ctx.fillStyle = "black";
+      ctx.font = "24px Arial";
+      ctx.fillText(`得分：${score}`, 10, 30);
+    }
+
+    let lastSpawn = Date.now();
+    let lastSpeedUp = Date.now();
+
+    function gameLoop() {
+      if (gameOver) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const now = Date.now();
+      if (now - lastSpawn > spawnRate) {
+        createTile(); lastSpawn = now;
+      }
+      if (now - lastSpeedUp > 10000) {
+        speed += 1;
+        spawnRate = Math.max(200, spawnRate - 100);
+        lastSpeedUp = now;
+      }
+
+      tiles.forEach(tile => tile.y += speed);
+      tiles.forEach(drawTile);
+
+      tiles = tiles.filter(tile => {
+        if (tile.y > canvas.height) {
+          endGame();
+          return false;
+        }
+        return true;
+      });
+
+      drawScore();
+      requestAnimationFrame(gameLoop);
+    }
+
+    canvas.addEventListener("click", function (e) {
+      if (gameOver) return;
+      const clickX = e.clientX, clickY = e.clientY;
+
+      for (let i = 0; i < tiles.length; i++) {
+        const tile = tiles[i];
+        if (clickX >= tile.x && clickX <= tile.x + tileWidth && clickY >= tile.y && clickY <= tile.y + tileHeight) {
+          tiles.splice(i, 1);
+          score++;
+          clickSound.currentTime = 0; clickSound.play();
+          return;
+        }
+      }
+    });
+
+    function endGame() {
+      gameOver = true;
+      canvas.style.display = "none";
+      endScreen.style.display = "flex";
+      bgm.pause(); bgm.currentTime = 0;
+      failSound.play();
+      scoreResult.textContent = `得分：${score}`;
+
+      let ranks = JSON.parse(localStorage.getItem('rankList') || '[]');
+      ranks.push(score);
+      ranks = ranks.sort((a, b) => b - a).slice(0, 10);
+      localStorage.setItem('rankList', JSON.stringify(ranks));
+      rankListDiv.innerHTML = '排行榜：<br>' + ranks.map((s, i) => `${i + 1}. ${s}分`).join('<br>');
+    }
+  </script>
+</body>
+</html>
